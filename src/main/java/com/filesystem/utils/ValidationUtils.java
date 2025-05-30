@@ -30,15 +30,17 @@ public final class ValidationUtils {
      */
     public static String validateEntityName(String entityName, String entityTypeForErrorMessage) {
         Optional.ofNullable(entityName)
+            .map(name -> {
+                if (name.isEmpty()) {
+                    log.error("{} name cannot be empty.", entityTypeForErrorMessage);
+                    throw new IllegalArgumentException(entityTypeForErrorMessage + " name cannot be empty.");
+                }
+                return name;
+            })
             .orElseThrow(() -> {
                 log.error("{} name cannot be null.", entityTypeForErrorMessage);
                 return new NullPointerException(entityTypeForErrorMessage + " name cannot be null.");
             });
-
-        if (entityName.isEmpty()) {
-            log.error("{} name cannot be empty.", entityTypeForErrorMessage);
-            throw new IllegalArgumentException(entityTypeForErrorMessage + " name cannot be empty.");
-        }
 
         if (!ALPHANUMERIC_PATTERN.matcher(entityName).matches()) {
             log.error("{} name must be alphanumeric: {}", entityTypeForErrorMessage, entityName);
