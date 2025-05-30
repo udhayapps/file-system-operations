@@ -1,3 +1,7 @@
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=udhayapps_file-system-operations&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=udhayapps_file-system-operations)
+[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=udhayapps_file-system-operations&metric=bugs)](https://sonarcloud.io/summary/new_code?id=udhayapps_file-system-operations)
+[![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=udhayapps_file-system-operations&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=udhayapps_file-system-operations)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=udhayapps_file-system-operations&metric=coverage)](https://sonarcloud.io/summary/new_code?id=udhayapps_file-system-operations)
 
 # 📁 File System Operations in Java
 
@@ -95,19 +99,19 @@ file-system-operations/
 
 ---
 
-## 🧪 Tests
-- `src/test/java/com/filesystem/FileSystemServiceTest.java`
-- `src/test/java/com/filesystem/utils/ValidationUtilsTest.java`
+## ⚡ GitHub Action for SonarCloud Analysis
+https://github.com/udhayapps/file-system-operations/actions
 
-**🏃 To run tests**
+## 🌀 SonarCloud Dashboard
+https://sonarcloud.io/project/information?id=udhayapps_file-system-operations
+
+---
+
+## 🧪 To run tests using Maven
 ```bash
   mvn clean compile test
 ```
-
-💡 Code coverage is configured using **JaCoCo**.
-- `target/site/jacoco/index.html` (Available after test run)
 ---
-
 ## 📝 Example Usage
 
 ```java
