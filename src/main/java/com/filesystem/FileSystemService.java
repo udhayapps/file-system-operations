@@ -86,8 +86,8 @@ public class FileSystemService {
     private Optional<FileSystemContainer> findContainer(String path) {
         log.info("Finding Container for Path: {}", path);
         return findEntity(path)
-                .filter(entity -> entity instanceof FileSystemContainer)
-                .map(entity -> (FileSystemContainer) entity);
+                .filter(FileSystemContainer.class::isInstance)
+                .map(FileSystemContainer.class::cast);
     }
 
     /**
@@ -187,8 +187,8 @@ public class FileSystemService {
      * Deletes an entity from the file system.
      *
      * @param path Path of the entity to delete. If a path is a drive, deletes the drive.
-     * @throws PathNotFoundException
-     * @throws IllegalFileSystemOperationException
+     * @throws PathNotFoundException Throws if a path is not found or is not an entity.
+     * @throws IllegalFileSystemOperationException Throws if the entity is a Drive or if the entity is an orphaned non-drive entity.
      */
     public void delete(String path) throws PathNotFoundException, IllegalFileSystemOperationException {
         log.info("Deleting Entity on Path: {}", path);
