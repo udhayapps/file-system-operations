@@ -1,6 +1,5 @@
 package com.filesystem.utils;
 
-import com.filesystem.FileSystemService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,10 +9,14 @@ import java.util.Optional;
 /**
  * Validation utility for the file system entities.
  */
-public class ValidationUtils {
+public final class ValidationUtils {
     private static final Logger log = LoggerFactory.getLogger(ValidationUtils.class);
 
-    // Permitting dot(.) in entity name to allow easily handling of file path extensions(.txt/.zip)
+    private ValidationUtils() {
+        throw new UnsupportedOperationException("ValidationUtils cannot be instantiated. Use static methods only.");
+    }
+
+    // Permitting dot(.) in entity name to allow handling of file path extensions(.txt/.zip)
     private static final Pattern ALPHANUMERIC_PATTERN = Pattern.compile("^[a-zA-Z0-9.]+$");
 
     /**

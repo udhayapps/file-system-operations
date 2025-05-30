@@ -6,32 +6,36 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-public class ValidationUtilsTest {
+class ValidationUtilsTest {
 
     @Test
     void testNullEntityName_ThrowsNullPointerException() {
-        assertThatThrownBy(() -> ValidationUtils.validateEntityName(null, EntityType.DRIVE.getDisplayName()))
+        String entityTypeDisplayName = EntityType.DRIVE.getDisplayName();
+        assertThatThrownBy(() -> ValidationUtils.validateEntityName(null, entityTypeDisplayName))
             .isInstanceOf(NullPointerException.class)
             .hasMessageContaining(EntityType.DRIVE.getDisplayName() + " name cannot be null.");
     }
 
     @Test
     void testEmptyEntityName_ThrowsIllegalArgumentException() {
-        assertThatThrownBy(() -> ValidationUtils.validateEntityName("", EntityType.DRIVE.getDisplayName()))
+        String entityTypeDisplayName = EntityType.DRIVE.getDisplayName();
+        assertThatThrownBy(() -> ValidationUtils.validateEntityName("", entityTypeDisplayName))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining(EntityType.DRIVE.getDisplayName() + " name cannot be empty.");
     }
 
     @Test
     void testEntityName_WithSpaces_ThrowsIllegalArgumentException() {
-        assertThatThrownBy(() -> ValidationUtils.validateEntityName("Some Entity Name", EntityType.DRIVE.getDisplayName()))
+        String entityTypeDisplayName = EntityType.DRIVE.getDisplayName();
+        assertThatThrownBy(() -> ValidationUtils.validateEntityName("Some Entity Name", entityTypeDisplayName))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining(EntityType.DRIVE.getDisplayName() + " name must be alphanumeric");
     }
 
     @Test
     void testEntityName_WithSpecialCharacters_ThrowsIllegalArgumentException() {
-        assertThatThrownBy(() -> ValidationUtils.validateEntityName("Some@Entity$Name", EntityType.DRIVE.getDisplayName()))
+        String entityTypeDisplayName = EntityType.DRIVE.getDisplayName();
+        assertThatThrownBy(() -> ValidationUtils.validateEntityName("Some@Entity$Name", entityTypeDisplayName))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining(EntityType.DRIVE.getDisplayName() + " name must be alphanumeric");
     }

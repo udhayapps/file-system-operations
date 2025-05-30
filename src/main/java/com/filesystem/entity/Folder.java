@@ -74,9 +74,9 @@ public class Folder implements FileSystemContainer {
                     "' already exists in folder: " + this.getName());
         }
 
-        childEntity.getParentEntity().ifPresent(parentEntity -> {
-            if (parentEntity != this) {
-                parentEntity.removeChildEntity(childEntity.getName());
+        childEntity.getParentEntity().ifPresent(parentContainer -> {
+            if (parentContainer != this) {
+                parentContainer.removeChildEntity(childEntity.getName());
             }
         });
 

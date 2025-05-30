@@ -72,9 +72,9 @@ public class ZipFile implements FileSystemContainer {
             throw new IllegalArgumentException("Entity with name: " + childEntity.getName() + " already exists in zip-file: " + this.getName());
         }
 
-        childEntity.getParentEntity().ifPresent(parentEntity -> {
-            if (parentEntity != this) {
-                parentEntity.removeChildEntity(childEntity.getName());
+        childEntity.getParentEntity().ifPresent(parentContainer -> {
+            if (parentContainer != this) {
+                parentContainer.removeChildEntity(childEntity.getName());
             }
         });
 
