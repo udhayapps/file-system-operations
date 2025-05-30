@@ -103,7 +103,7 @@ file-system-operations/
 https://github.com/udhayapps/file-system-operations/actions
 
 ## 🌀 SonarCloud Dashboard
-https://sonarcloud.io/project/information?id=udhayapps_file-system-operations
+https://sonarcloud.io/project/overview?id=udhayapps_file-system-operations
 
 ---
 
