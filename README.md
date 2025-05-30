@@ -130,7 +130,6 @@ fsService.move("C/Documents/note.txt", "C");
 ```
 
 ---
-
 ## 🛡️ Exceptions Thrown
 
 | Exception | When thrown                                                                   |
@@ -143,7 +142,6 @@ fsService.move("C/Documents/note.txt", "C");
 | `IllegalArgumentException` | Throws on invalid entity names.                                               |
 
 ---
-
 ## 📋 License
 
 MIT License – see [LICENSE](LICENSE)
