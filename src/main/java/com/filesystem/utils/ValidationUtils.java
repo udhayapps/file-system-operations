@@ -12,7 +12,7 @@ import java.util.Optional;
 public final class ValidationUtils {
     private static final Logger log = LoggerFactory.getLogger(ValidationUtils.class);
 
-    private ValidationUtils() {
+    private ValidationUtils() { //NOSONAR S1144
         throw new UnsupportedOperationException("ValidationUtils cannot be instantiated. Use static methods only.");
     }
 
