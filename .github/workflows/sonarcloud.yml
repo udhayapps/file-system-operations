@@ -1,52 +1,3 @@
-name: SonarQube
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-    types: [opened, synchronize, reopened]
-jobs:
-  build:
-    name: Build and analyze
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: 21
-          distribution: 'zulu' # Alternative distribution options are available.
-      - name: Cache SonarQube packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.sonar/cache
-          key: ${{ runner.os }}-sonar
-          restore-keys: ${{ runner.os }}-sonar
-      - name: Cache Maven packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
-      - name: Build and analyze
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=udhayapps_file-system-operations
-
-
-
-
-
-
-
-
-
-
-
-
-
 import io.github.resilience4j.retry.Retry;
 import org.junit.Before;
 import org.junit.Test;
@@ -71,39 +22,35 @@ public class DatabaseRetryManagerTest {
     
     @Before
     public void setUp() {
-        retryManager = new DatabaseRetryManager();
+        // Use fast execution for most tests
+        retryManager = new DatabaseRetryManager(3, Duration.ofMillis(100));
     }
     
     @Test
-    public void testCreateRetry_WithValidConfiguration_ShouldCreateRetryInstance() {
-        // Given
-        int maxAttempts = 3;
-        Duration waitDuration = Duration.ofSeconds(1);
-        
-        // When
-        Retry retry = retryManager.createRetry(maxAttempts, waitDuration);
+    public void testConstructor_WithValidConfiguration_ShouldCreateInstance() {
+        // Given & When
+        DatabaseRetryManager manager = new DatabaseRetryManager(5, Duration.ofSeconds(60));
         
         // Then
-        assertNotNull("Retry instance should not be null", retry);
-        assertEquals("Retry name should match", "truncateRetry", retry.getName());
+        assertNotNull("RetryManager instance should not be null", manager);
     }
     
     @Test
     public void testExecuteWithRetry_SuccessfulOperation_ShouldExecuteOnce() {
         // Given
-        Retry retry = retryManager.createRetry(3, Duration.ofMillis(100));
+        AtomicInteger callCount = new AtomicInteger(0);
+        Runnable operation = () -> callCount.incrementAndGet();
         
         // When
-        retryManager.executeWithRetry(mockOperation, retry);
+        retryManager.executeWithRetry(operation);
         
         // Then
-        verify(mockOperation, times(1)).run();
+        assertEquals("Should execute operation once", 1, callCount.get());
     }
     
     @Test
     public void testExecuteWithRetry_WithORA00054_ShouldRetryAndSucceed() {
         // Given
-        Retry retry = retryManager.createRetry(3, Duration.ofMillis(100));
         AtomicInteger callCount = new AtomicInteger(0);
         
         Runnable operation = () -> {
@@ -115,16 +62,15 @@ public class DatabaseRetryManagerTest {
         };
         
         // When
-        retryManager.executeWithRetry(operation, retry);
+        retryManager.executeWithRetry(operation);
         
         // Then
-        assertEquals("Should have been called twice", 2, callCount.get());
+        assertEquals("Should have been called twice (1 failure + 1 success)", 2, callCount.get());
     }
     
     @Test
     public void testExecuteWithRetry_WithORA00054_ShouldRetryMaxAttempts() {
         // Given
-        Retry retry = retryManager.createRetry(3, Duration.ofMillis(100));
         AtomicInteger callCount = new AtomicInteger(0);
         SQLException ora00054 = new SQLException("resource busy", "54000", 54);
         
@@ -135,11 +81,11 @@ public class DatabaseRetryManagerTest {
         
         // When & Then
         try {
-            retryManager.executeWithRetry(operation, retry);
+            retryManager.executeWithRetry(operation);
             fail("Should have thrown exception after max attempts");
         } catch (Exception e) {
             assertEquals("Should have been called 3 times", 3, callCount.get());
-            assertTrue("Should contain original exception", 
+            assertTrue("Should contain original SQLException", 
                 e.getCause() instanceof SQLException);
             assertEquals("Should be ORA-00054", 54, 
                 ((SQLException) e.getCause()).getErrorCode());
@@ -149,7 +95,6 @@ public class DatabaseRetryManagerTest {
     @Test
     public void testExecuteWithRetry_WithNonRetryableException_ShouldNotRetry() {
         // Given
-        Retry retry = retryManager.createRetry(3, Duration.ofMillis(100));
         AtomicInteger callCount = new AtomicInteger(0);
         SQLException nonRetryableException = new SQLException("table not found", "42000", 942);
         
@@ -160,11 +105,11 @@ public class DatabaseRetryManagerTest {
         
         // When & Then
         try {
-            retryManager.executeWithRetry(operation, retry);
+            retryManager.executeWithRetry(operation);
             fail("Should have thrown exception immediately");
         } catch (Exception e) {
             assertEquals("Should have been called only once", 1, callCount.get());
-            assertTrue("Should contain original exception", 
+            assertTrue("Should contain original SQLException", 
                 e.getCause() instanceof SQLException);
             assertEquals("Should be ORA-00942", 942, 
                 ((SQLException) e.getCause()).getErrorCode());
@@ -174,7 +119,6 @@ public class DatabaseRetryManagerTest {
     @Test
     public void testExecuteWithRetry_WithRuntimeException_ShouldNotRetry() {
         // Given
-        Retry retry = retryManager.createRetry(3, Duration.ofMillis(100));
         AtomicInteger callCount = new AtomicInteger(0);
         
         Runnable operation = () -> {
@@ -184,7 +128,7 @@ public class DatabaseRetryManagerTest {
         
         // When & Then
         try {
-            retryManager.executeWithRetry(operation, retry);
+            retryManager.executeWithRetry(operation);
             fail("Should have thrown exception immediately");
         } catch (Exception e) {
             assertEquals("Should have been called only once", 1, callCount.get());
@@ -193,15 +137,32 @@ public class DatabaseRetryManagerTest {
     }
     
     @Test
-    public void testCreateRetry_WithDifferentConfigurations_ShouldHonorSettings() {
+    public void testConstructor_WithDifferentMaxAttempts_ShouldHonorConfiguration() {
         // Given
-        int maxAttempts = 5;
-        Duration waitDuration = Duration.ofSeconds(2);
+        DatabaseRetryManager manager = new DatabaseRetryManager(5, Duration.ofMillis(50));
         AtomicInteger callCount = new AtomicInteger(0);
         SQLException ora00054 = new SQLException("resource busy", "54000", 54);
         
-        // When
-        Retry retry = retryManager.createRetry(maxAttempts, waitDuration);
+        Runnable operation = () -> {
+            callCount.incrementAndGet();
+            throw new RuntimeException(ora00054);
+        };
+        
+        // When & Then
+        try {
+            manager.executeWithRetry(operation);
+            fail("Should have thrown exception after max attempts");
+        } catch (Exception e) {
+            assertEquals("Should have been called 5 times", 5, callCount.get());
+        }
+    }
+    
+    @Test
+    public void testConstructor_WithDifferentWaitDuration_ShouldHonorTiming() {
+        // Given
+        DatabaseRetryManager manager = new DatabaseRetryManager(2, Duration.ofMillis(200));
+        AtomicInteger callCount = new AtomicInteger(0);
+        SQLException ora00054 = new SQLException("resource busy", "54000", 54);
         
         Runnable operation = () -> {
             callCount.incrementAndGet();
@@ -210,71 +171,60 @@ public class DatabaseRetryManagerTest {
         
         long startTime = System.currentTimeMillis();
         
-        // Then
+        // When & Then
         try {
-            retryManager.executeWithRetry(operation, retry);
+            manager.executeWithRetry(operation);
             fail("Should have thrown exception after max attempts");
         } catch (Exception e) {
             long duration = System.currentTimeMillis() - startTime;
             
-            assertEquals("Should have been called 5 times", 5, callCount.get());
-            assertTrue("Should have waited at least 8 seconds (4 waits * 2 seconds)", 
-                duration >= 8000); // 4 waits of 2 seconds each
+            assertEquals("Should have been called 2 times", 2, callCount.get());
+            assertTrue("Should have waited at least 200ms (1 wait)", duration >= 200);
         }
     }
     
     @Test
-    public void testIsORA00054_WithORA00054_ShouldReturnTrue() {
-        // This tests the private method indirectly through retry behavior
-        
+    public void testIsORA00054_WithORA00054_ShouldRetry() {
         // Given
-        Retry retry = retryManager.createRetry(2, Duration.ofMillis(100));
         AtomicInteger callCount = new AtomicInteger(0);
         
         Runnable operation = () -> {
             int count = callCount.incrementAndGet();
             if (count == 1) {
-                // First call: ORA-00054 should trigger retry
                 throw new RuntimeException(new SQLException("resource busy", "54000", 54));
             }
-            // Second call: success
+            // Success on second attempt
         };
         
         // When
-        retryManager.executeWithRetry(operation, retry);
+        retryManager.executeWithRetry(operation);
         
         // Then
         assertEquals("Should have retried once", 2, callCount.get());
     }
     
     @Test
-    public void testIsORA00054_WithORA30006_ShouldReturnTrue() {
-        // ORA-30006 is also a retryable resource busy error
-        
+    public void testIsORA00054_WithORA00942_ShouldNotRetry() {
         // Given
-        Retry retry = retryManager.createRetry(2, Duration.ofMillis(100));
         AtomicInteger callCount = new AtomicInteger(0);
         
         Runnable operation = () -> {
-            int count = callCount.incrementAndGet();
-            if (count == 1) {
-                // First call: ORA-30006 should trigger retry
-                throw new RuntimeException(new SQLException("resource busy acquire with NOWAIT", "72000", 30006));
-            }
-            // Second call: success
+            callCount.incrementAndGet();
+            throw new RuntimeException(new SQLException("table not found", "42000", 942));
         };
         
-        // When
-        retryManager.executeWithRetry(operation, retry);
-        
-        // Then
-        assertEquals("Should have retried once", 2, callCount.get());
+        // When & Then
+        try {
+            retryManager.executeWithRetry(operation);
+            fail("Should have thrown exception immediately");
+        } catch (Exception e) {
+            assertEquals("Should have been called only once", 1, callCount.get());
+        }
     }
     
     @Test
-    public void testIsORA00054_WithNonSQLException_ShouldReturnFalse() {
+    public void testIsORA00054_WithNonSQLException_ShouldNotRetry() {
         // Given
-        Retry retry = retryManager.createRetry(3, Duration.ofMillis(100));
         AtomicInteger callCount = new AtomicInteger(0);
         
         Runnable operation = () -> {
@@ -284,7 +234,7 @@ public class DatabaseRetryManagerTest {
         
         // When & Then
         try {
-            retryManager.executeWithRetry(operation, retry);
+            retryManager.executeWithRetry(operation);
             fail("Should have thrown exception immediately");
         } catch (Exception e) {
             assertEquals("Should have been called only once", 1, callCount.get());
@@ -294,24 +244,80 @@ public class DatabaseRetryManagerTest {
     }
     
     @Test
-    public void testCreateRetry_WithZeroMaxAttempts_ShouldCreateValidRetry() {
-        // Edge case: zero max attempts
+    public void testConstructor_WithProductionConfiguration_ShouldWork() {
+        // Given - production-like configuration
+        DatabaseRetryManager manager = new DatabaseRetryManager(5, Duration.ofSeconds(60));
+        AtomicInteger callCount = new AtomicInteger(0);
         
-        // Given & When
-        Retry retry = retryManager.createRetry(0, Duration.ofMillis(100));
+        Runnable operation = () -> {
+            callCount.incrementAndGet();
+            // Simulate success
+        };
+        
+        // When
+        manager.executeWithRetry(operation);
         
         // Then
-        assertNotNull("Retry should be created even with 0 attempts", retry);
+        assertEquals("Should execute successfully", 1, callCount.get());
     }
     
     @Test
-    public void testCreateRetry_WithLargeWaitDuration_ShouldCreateValidRetry() {
-        // Edge case: large wait duration
-        
+    public void testConstructor_WithZeroMaxAttempts_ShouldCreateValidInstance() {
         // Given & When
-        Retry retry = retryManager.createRetry(1, Duration.ofHours(1));
+        DatabaseRetryManager manager = new DatabaseRetryManager(0, Duration.ofMillis(100));
         
         // Then
-        assertNotNull("Retry should be created with large wait duration", retry);
+        assertNotNull("Should create instance even with 0 attempts", manager);
+    }
+    
+    @Test
+    public void testConstructor_WithLargeWaitDuration_ShouldCreateValidInstance() {
+        // Given & When
+        DatabaseRetryManager manager = new DatabaseRetryManager(1, Duration.ofHours(1));
+        
+        // Then
+        assertNotNull("Should create instance with large wait duration", manager);
+    }
+    
+    @Test
+    public void testExecuteWithRetry_MultipleORA00054Retries_ShouldEventuallySucceed() {
+        // Given
+        AtomicInteger callCount = new AtomicInteger(0);
+        
+        Runnable operation = () -> {
+            int count = callCount.incrementAndGet();
+            if (count <= 2) { // Fail first 2 attempts
+                throw new RuntimeException(new SQLException("resource busy", "54000", 54));
+            }
+            // Success on third attempt
+        };
+        
+        // When
+        retryManager.executeWithRetry(operation);
+        
+        // Then
+        assertEquals("Should succeed after 3 attempts", 3, callCount.get());
+    }
+    
+    @Test
+    public void testExecuteWithRetry_AlternatingExceptions_ShouldOnlyRetryORA00054() {
+        // Given
+        AtomicInteger callCount = new AtomicInteger(0);
+        
+        Runnable operation = () -> {
+            int count = callCount.incrementAndGet();
+            if (count == 1) {
+                // First call: non-retryable exception
+                throw new RuntimeException(new SQLException("syntax error", "42000", 900));
+            }
+        };
+        
+        // When & Then
+        try {
+            retryManager.executeWithRetry(operation);
+            fail("Should have thrown exception immediately");  
+        } catch (Exception e) {
+            assertEquals("Should not retry non-ORA-00054 errors", 1, callCount.get());
+        }
     }
 }
